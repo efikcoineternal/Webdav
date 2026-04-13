@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>WebDAV File Manager – EfikCoin Tools</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/webdav@4.11.0/dist/webdav.min.js"></script>
+    <style>
+        body { background: radial-gradient(circle at 10% 30%, #0a0f1e, #03060f); font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(15, 25, 45, 0.7); backdrop-filter: blur(14px); border: 1px solid rgba(0, 255, 255, 0.25); border-radius: 2rem; transition: 0.3s; }
+        .glass-card:hover { transform: translateY(-3px); }
+        .file-row { cursor: pointer; transition: background 0.2s; }
+        .file-row:hover { background: rgba(0,198,251,0.2); }
+        .breadcrumb { cursor: pointer; color: #00c6fb; }
+        .breadcrumb:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div id="loading" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <div class="bg-gray-900 p-6 rounded-2xl"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+</div>
+
+<!-- Top Bar -->
+<div class="fixed top-0 left-0 right-0 z-40 flex justify-between items-center p-3 bg-black/50 backdrop-blur-md border-b border-white/10">
+    <div class="flex items-center gap-2">
+        <i class="fas fa-folder-open text-cyan-400 text-2xl"></i>
+        <span class="font-bold text-cyan-300">EfikCoin WebDAV Manager</span>
+    </div>
+    <div id="google_translate_element" class="text-sm"></div>
+</div>
+
+<div class="pt-20 p-4 max-w-7xl mx-auto">
+    <!-- Connection Panel -->
+    <div class="glass-card p-5 mb-6">
+        <h2 class="text-2xl font-bold mb-4"><i class="fas fa-plug"></i> Connect to WebDAV Server</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" id="server-url" placeholder="Server URL (e.g., https://nextcloud.example.com/remote.php/dav/files/username/)" class="bg-black/50 p-2 rounded-xl border border-cyan-500/50">
+            <input type="text" id="username" placeholder="Username" class="bg-black/50 p-2 rounded-xl border border-cyan-500/50">
+            <input type="password" id="password" placeholder="Password" class="bg-black/50 p-2 rounded-xl border border-cyan-500/50">
+            <button id="connect-btn" class="btn-primary py-2 rounded-xl">Connect</button>
+        </div>
+        <div id="connection-status" class="text-sm mt-2 text-gray-400"></div>
+    </div>
+
+    <!-- File Browser -->
+    <div id="browser-panel" class="glass-card p-5 hidden">
+        <div class="flex flex-wrap justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-folder-open text-cyan-400"></i>
+                <span id="current-path" class="font-mono text-sm">/</span>
+            </div>
+            <div class="flex gap-2">
+                <button id="upload-btn" class="bg-green-600/50 text-sm px-3 py-1 rounded-full"><i class="fas fa-upload"></i> Upload</button>
+                <button id="mkdir-btn" class="bg-blue-600/50 text-sm px-3 py-1 rounded-full"><i class="fas fa-folder-plus"></i> New Folder</button>
+                <button id="refresh-btn" class="bg-gray-600/50 text-sm px-3 py-1 rounded-full"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+        </div>
+        <div id="file-list" class="overflow-auto max-h-96">
+            <p class="text-gray-400">Connect to a WebDAV server to browse files.</p>
+        </div>
+        <!-- Hidden file input for upload -->
+        <input type="file" id="file-upload" class="hidden" multiple>
+    </div>
+
+    <!-- Right-click / Context menu (simplified) -->
+    <div id="context-menu" class="fixed bg-gray-800 border border-white/20 rounded-lg shadow-lg z-50 hidden">
+        <ul class="py-1">
+            <li id="ctx-download" class="px-4 py-2 hover:bg-cyan-600/30 cursor-pointer"><i class="fas fa-download"></i> Download</li>
+            <li id="ctx-delete" class="px-4 py-2 hover:bg-red-600/30 cursor-pointer"><i class="fas fa-trash"></i> Delete</li>
+            <li id="ctx-rename" class="px-4 py-2 hover:bg-yellow-600/30 cursor-pointer"><i class="fas fa-pen"></i> Rename</li>
+        </ul>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script>
+    let client = null;
+    let currentPath = "/";
+    let selectedFile = null;
+    let contextFile = null;
+
+    function setLoading(show) {
+        document.getElementById("loading").classList.toggle("hidden", !show);
+    }
+
+    async function connect() {
+        const url = document.getElementById("server-url").value.trim();
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        if (!url) { alert("Enter server URL"); return; }
+        setLoading(true);
+        try {
+            client = new WebDAV.Client(url, { username, password, authType: "password" });
+            // Test connection by getting root directory
+            await client.getDirectoryContents("/");
+            document.getElementById("connection-status").innerHTML = '<span class="text-green-400">✅ Connected</span>';
+            document.getElementById("browser-panel").classList.remove("hidden");
+            currentPath = "/";
+            await loadDirectory(currentPath);
+        } catch (err) {
+            document.getElementById("connection-status").innerHTML = `<span class="text-red-400">❌ Connection failed: ${err.message}</span>`;
+            client = null;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadDirectory(path) {
+        if (!client) return;
+        setLoading(true);
+        try {
+            const items = await client.getDirectoryContents(path);
+            document.getElementById("current-path").innerText = path;
+            const container = document.getElementById("file-list");
+            if (items.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">Empty folder</p>';
+                return;
+            }
+            let html = '<table class="w-full text-left">';
+            html += '<thead><tr><th>Name</th><th>Size</th><th>Modified</th><th>Type</th></tr></thead><tbody>';
+            items.sort((a,b) => {
+                if (a.type === 'directory' && b.type !== 'directory') return -1;
+                if (a.type !== 'directory' && b.type === 'directory') return 1;
+                return a.basename.localeCompare(b.basename);
+            });
+            for (const item of items) {
+                const icon = item.type === 'directory' ? '<i class="fas fa-folder text-yellow-400"></i>' : '<i class="fas fa-file text-gray-400"></i>';
+                const size = item.type === 'directory' ? '-' : formatBytes(item.size);
+                const date = item.lastmod ? new Date(item.lastmod).toLocaleString() : '-';
+                html += `<tr class="file-row" data-path="${item.filename}" data-type="${item.type}">
+                            <td>${icon} ${item.basename}</td>
+                            <td>${size}</td>
+                            <td>${date}</td>
+                            <td>${item.type}</td>
+                         </tr>`;
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            // Attach click events
+            document.querySelectorAll('.file-row').forEach(row => {
+                row.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const filePath = row.getAttribute('data-path');
+                    const type = row.getAttribute('data-type');
+                    if (type === 'directory') {
+                        await loadDirectory(filePath);
+                    } else {
+                        // Select file for context menu (right-click)
+                        selectedFile = filePath;
+                    }
+                });
+                row.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    contextFile = row.getAttribute('data-path');
+                    const menu = document.getElementById('context-menu');
+                    menu.style.top = `${e.clientY}px`;
+                    menu.style.left = `${e.clientX}px`;
+                    menu.classList.remove('hidden');
+                });
+            });
+        } catch (err) {
+            alert("Error loading directory: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Upload
+    document.getElementById("upload-btn").onclick = () => {
+        document.getElementById("file-upload").click();
+    };
+    document.getElementById("file-upload").onchange = async (e) => {
+        const files = e.target.files;
+        if (!files.length) return;
+        setLoading(true);
+        try {
+            for (const file of files) {
+                const targetPath = currentPath === "/" ? `/${file.name}` : `${currentPath}/${file.name}`;
+                const arrayBuffer = await file.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                await client.putFileContents(targetPath, uint8Array, { overwrite: true });
+            }
+            await loadDirectory(currentPath);
+        } catch (err) {
+            alert("Upload failed: " + err.message);
+        } finally {
+            setLoading(false);
+            document.getElementById("file-upload").value = '';
+        }
+    };
+
+    // Create folder
+    document.getElementById("mkdir-btn").onclick = async () => {
+        const folderName = prompt("Enter folder name:");
+        if (!folderName) return;
+        setLoading(true);
+        try {
+            const newPath = currentPath === "/" ? `/${folderName}` : `${currentPath}/${folderName}`;
+            await client.createDirectory(newPath);
+            await loadDirectory(currentPath);
+        } catch (err) {
+            alert("Failed to create folder: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Refresh
+    document.getElementById("refresh-btn").onclick = () => loadDirectory(currentPath);
+
+    // Context menu actions
+    document.getElementById("ctx-download").onclick = async () => {
+        if (!contextFile) return;
+        setLoading(true);
+        try {
+            const data = await client.getFileContents(contextFile, { format: "binary" });
+            const blob = new Blob([data], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = contextFile.split('/').pop();
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert("Download failed: " + err.message);
+        } finally {
+            setLoading(false);
+            document.getElementById("context-menu").classList.add("hidden");
+        }
+    };
+    document.getElementById("ctx-delete").onclick = async () => {
+        if (!contextFile) return;
+        if (confirm(`Delete ${contextFile}?`)) {
+            setLoading(true);
+            try {
+                await client.deleteFile(contextFile);
+                await loadDirectory(currentPath);
+            } catch (err) {
+                alert("Delete failed: " + err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+        document.getElementById("context-menu").classList.add("hidden");
+    };
+    document.getElementById("ctx-rename").onclick = async () => {
+        if (!contextFile) return;
+        const newName = prompt("Enter new name:", contextFile.split('/').pop());
+        if (!newName) return;
+        setLoading(true);
+        try {
+            const parent = contextFile.substring(0, contextFile.lastIndexOf('/'));
+            const newPath = parent ? `${parent}/${newName}` : `/${newName}`;
+            await client.moveFile(contextFile, newPath);
+            await loadDirectory(currentPath);
+        } catch (err) {
+            alert("Rename failed: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+        document.getElementById("context-menu").classList.add("hidden");
+    };
+    // Close context menu on click anywhere else
+    document.addEventListener('click', () => {
+        document.getElementById("context-menu").classList.add("hidden");
+    });
+
+    // Breadcrumb navigation (click on current path segments)
+    document.getElementById("current-path").addEventListener('click', (e) => {
+        const path = document.getElementById("current-path").innerText;
+        if (path !== "/") {
+            const parts = path.split('/').filter(p => p);
+            // Simple: go up one level
+            const parent = parts.slice(0, -1).join('/');
+            loadDirectory(parent ? `/${parent}` : "/");
+        }
+    });
+
+    // Connect button
+    document.getElementById("connect-btn").onclick = connect;
+
+    // Google Translate
+    window.googleTranslateElementInit = () => {
+        new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element');
+    };
+    const translateScript = document.createElement('script');
+    translateScript.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    document.head.appendChild(translateScript);
+</script>
+</body>
+</html>
