@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>EfikCoin Sports – Bet with ECE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/modal@2.6.2/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.11.0/dist/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@web3modal/ethers@3.0.3/dist/index.min.js"></script>
+    <style>
+        body { background: radial-gradient(circle at 10% 30%, #0a0f1e, #03060f); font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(15, 25, 45, 0.7); backdrop-filter: blur(14px); border: 1px solid rgba(0, 255, 255, 0.25); border-radius: 2rem; transition: 0.3s; }
+        .glass-card:hover { transform: translateY(-3px); }
+        .btn-primary { background: linear-gradient(135deg, #00c6fb, #005bea); }
+        .btn-primary:hover { transform: scale(1.02); }
+        .match-card { background: rgba(0,0,0,0.5); border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; }
+        .odds-btn { background: #1a2a3a; border: 1px solid #00c6fb; transition: 0.2s; }
+        .odds-btn:hover { background: #00c6fb20; transform: scale(1.02); }
+        .selected { background: #00c6fb; color: black; border: none; }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 p-6 rounded-2xl flex flex-col items-center"><i class="fas fa-spinner fa-spin text-4xl text-cyan-400"></i><p id="loading-text" class="mt-3">Processing...</p></div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="fixed top-0 left-0 right-0 z-40 flex justify-between items-center p-3 bg-black/50 backdrop-blur-md border-b border-white/10">
+        <div class="flex items-center gap-2">
+            <img src="https://raw.githubusercontent.com/Efikcoinofficialecosystem/efikcoin-eternal/main/1772019882787.png" class="w-8 h-8 rounded-full" alt="logo">
+            <span class="font-bold text-cyan-300">EfikCoin Sports Betting</span>
+            <a href="https://efikcoineternal.github.io/ECE-Wallet/" target="_blank" class="text-xs text-gray-400 hover:text-cyan-300 ml-2"><i class="fas fa-wallet"></i> Wallet</a>
+        </div>
+        <div class="flex gap-3">
+            <button id="connect-wallet-btn" class="bg-purple-600/50 hover:bg-purple-600 px-3 py-1 rounded-full text-xs"><i class="fas fa-plug"></i> Connect Wallet</button>
+            <div id="google_translate_element" class="text-sm"></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="pt-24 p-4 max-w-6xl mx-auto">
+        <!-- Wallet info -->
+        <div class="glass-card p-4 mb-6 flex justify-between items-center">
+            <div><p class="text-gray-400 text-sm">Connected Wallet</p><p id="user-address" class="font-mono text-sm">Not connected</p></div>
+            <div><p class="text-gray-400 text-sm">ECE Balance</p><p id="ece-balance" class="text-xl font-bold">0.00</p></div>
+        </div>
+
+        <!-- Live Matches Section -->
+        <h2 class="text-2xl font-bold mb-4"><i class="fas fa-futbol text-green-400"></i> Today's Matches</h2>
+        <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Matches will be injected here -->
+        </div>
+
+        <!-- My Bets Section -->
+        <div class="glass-card p-4 mt-8">
+            <h2 class="text-xl font-bold mb-3"><i class="fas fa-receipt"></i> My Bets</h2>
+            <div id="my-bets" class="space-y-2 text-sm">
+                <p class="text-gray-400">No bets placed yet. Connect wallet and place a bet!</p>
+            </div>
+        </div>
+
+        <!-- Admin Panel (only visible if connected wallet is admin) -->
+        <div id="admin-panel" class="glass-card p-4 mt-8 hidden">
+            <h2 class="text-xl font-bold mb-3"><i class="fas fa-user-shield"></i> Admin Panel</h2>
+            <div>
+                <h3 class="font-bold">Settle Match (Payout Winners)</h3>
+                <select id="settle-match-select" class="bg-black/50 p-2 rounded w-full mt-2"></select>
+                <input type="number" id="winning-outcome" placeholder="Winning outcome (0=Home, 1=Draw, 2=Away)" class="bg-black/50 p-2 rounded w-full mt-2">
+                <button id="settle-match-btn" class="btn-primary w-full mt-2 py-2 rounded">Settle & Pay Winners</button>
+            </div>
+            <div class="mt-4">
+                <h3 class="font-bold">Add New Match</h3>
+                <input type="text" id="new-home" placeholder="Home Team" class="bg-black/50 p-2 rounded w-full mt-2">
+                <input type="text" id="new-away" placeholder="Away Team" class="bg-black/50 p-2 rounded w-full mt-2">
+                <input type="number" id="new-odds-home" placeholder="Odds Home" step="0.01" class="bg-black/50 p-2 rounded w-full mt-2">
+                <input type="number" id="new-odds-draw" placeholder="Odds Draw" step="0.01" class="bg-black/50 p-2 rounded w-full mt-2">
+                <input type="number" id="new-odds-away" placeholder="Odds Away" step="0.01" class="bg-black/50 p-2 rounded w-full mt-2">
+                <button id="add-match-btn" class="bg-green-600 w-full mt-2 py-2 rounded">Add Match</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        // ---------- CONTRACT & RPC ----------
+        const TOKEN_ADDRESS = "0x9F8C29E496ECB6C39c221458f211234DfCB233E0";
+        const TOKEN_ABI = [{"inputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"symbol","type":"string"},{"internalType":"uint8","name":"decimals","type":"uint8"},{"internalType":"uint256","name":"supply","type":"uint256"},{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"feeWallet","type":"address"},{"internalType":"string","name":"metadata_ipfs_hash","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"metadata_ipfs_hash","type":"string"}],"name":"MetadataUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"owner","type":"address"}],"name":"TeamFinanceTokenMint","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"account","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burnFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"subtractedValue","type":"uint256"}],"name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"addedValue","type":"uint256"}],"name":"increaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"metadata","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"metadata_ipfs_hash","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"mint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"metadata_ipfs_hash","type":"string"}],"name":"updateMetadata","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+        
+        const BSC_RPC = "https://bsc-dataseed.binance.org/";
+        let provider, tokenContract, signer, userAddress = null, userBalance = 0;
+        let web3Modal;
+        const projectId = "b56e18d99c7dd5bcf5b87b5c7942d9d8";
+        
+        // Data: matches and bets stored in localStorage (admin can also manage)
+        let matches = [];
+        let bets = [];
+        const ADMIN_ADDRESS = "0x59A8D4f63A7Bcc58bFfEC4e972ba079443c2e358"; // Your ecosystem wallet – admin can settle matches
+        
+        function loadData() {
+            const storedMatches = localStorage.getItem("efikcoin_matches");
+            if(storedMatches) matches = JSON.parse(storedMatches);
+            else {
+                // Default sample matches
+                matches = [
+                    { id: 0, home: "Manchester United", away: "Liverpool", oddsHome: 2.5, oddsDraw: 3.2, oddsAway: 2.8, status: "open", result: null },
+                    { id: 1, home: "Real Madrid", away: "Barcelona", oddsHome: 2.1, oddsDraw: 3.5, oddsAway: 3.0, status: "open", result: null }
+                ];
+                saveMatches();
+            }
+            const storedBets = localStorage.getItem("efikcoin_bets");
+            if(storedBets) bets = JSON.parse(storedBets);
+            else bets = [];
+        }
+        function saveMatches() { localStorage.setItem("efikcoin_matches", JSON.stringify(matches)); }
+        function saveBets() { localStorage.setItem("efikcoin_bets", JSON.stringify(bets)); }
+        
+        loadData();
+        
+        // Web3Modal
+        async function initWeb3Modal() {
+            if (typeof window !== 'undefined') {
+                web3Modal = new Web3Modal.default({
+                    projectId: projectId,
+                    chains: [56],
+                    themeMode: 'dark',
+                    themeVariables: { '--w3m-accent': '#00c6fb' }
+                });
+            }
+        }
+        initWeb3Modal();
+        
+        document.getElementById("connect-wallet-btn").onclick = async () => {
+            try {
+                const web3Session = await web3Modal.openModal();
+                const ethersProvider = new ethers.providers.Web3Provider(web3Session);
+                signer = ethersProvider.getSigner();
+                userAddress = await signer.getAddress();
+                provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
+                tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, provider);
+                const balance = await tokenContract.balanceOf(userAddress);
+                userBalance = parseFloat(ethers.utils.formatUnits(balance, 18));
+                document.getElementById("user-address").innerText = userAddress.slice(0,10)+"...";
+                document.getElementById("ece-balance").innerText = userBalance.toFixed(2);
+                // Check if admin
+                if(userAddress.toLowerCase() === ADMIN_ADDRESS.toLowerCase()) {
+                    document.getElementById("admin-panel").classList.remove("hidden");
+                    populateSettleSelect();
+                }
+                renderMatches();
+                renderMyBets();
+            } catch(e) { alert("Connection failed: "+e.message); }
+        };
+        
+        function populateSettleSelect() {
+            const select = document.getElementById("settle-match-select");
+            select.innerHTML = "";
+            matches.forEach((m, idx) => {
+                if(m.status === "open") {
+                    const option = document.createElement("option");
+                    option.value = idx;
+                    option.textContent = `${m.home} vs ${m.away}`;
+                    select.appendChild(option);
+                }
+            });
+        }
+        
+        // Place bet
+        async function placeBet(matchId, outcome, amount) {
+            if(!userAddress) { alert("Connect wallet first"); return; }
+            if(amount <= 0) { alert("Invalid amount"); return; }
+            if(amount > userBalance) { alert("Insufficient ECE balance"); return; }
+            const match = matches[matchId];
+            if(match.status !== "open") { alert("Match is already settled"); return; }
+            let odds = 0;
+            if(outcome === "home") odds = match.oddsHome;
+            else if(outcome === "draw") odds = match.oddsDraw;
+            else odds = match.oddsAway;
+            setLoading(true, "Approving token...");
+            try {
+                // Approve the betting contract (we will just transfer token to admin wallet for simplicity)
+                // For security, we will transfer ECE to admin wallet and record bet.
+                const amountWei = ethers.utils.parseUnits(amount.toString(), 18);
+                const tokenWithSigner = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+                const approveTx = await tokenWithSigner.approve(ADMIN_ADDRESS, amountWei);
+                await approveTx.wait();
+                const transferTx = await tokenWithSigner.transfer(ADMIN_ADDRESS, amountWei);
+                await transferTx.wait();
+                // Record bet
+                const newBet = {
+                    id: Date.now(),
+                    user: userAddress,
+                    matchId: matchId,
+                    matchName: `${match.home} vs ${match.away}`,
+                    outcome: outcome,
+                    amount: amount,
+                    odds: odds,
+                    status: "pending",
+                    potentialWin: (amount * odds).toFixed(2),
+                    timestamp: new Date().toISOString()
+                };
+                bets.push(newBet);
+                saveBets();
+                renderMyBets();
+                // Update user balance display
+                const newBalance = await tokenContract.balanceOf(userAddress);
+                userBalance = parseFloat(ethers.utils.formatUnits(newBalance, 18));
+                document.getElementById("ece-balance").innerText = userBalance.toFixed(2);
+                alert(`Bet placed! You bet ${amount} ECE on ${match.home} vs ${match.away} - ${outcome}. Potential win: ${newBet.potentialWin} ECE`);
+            } catch(e) { alert("Error: "+e.message); }
+            finally { setLoading(false); }
+        }
+        
+        // Render matches with buttons
+        function renderMatches() {
+            const container = document.getElementById("matches-container");
+            container.innerHTML = "";
+            matches.forEach((match, idx) => {
+                const card = document.createElement("div");
+                card.className = "match-card";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-lg">${match.home}</span>
+                        <span class="text-cyan-400">vs</span>
+                        <span class="font-bold text-lg">${match.away}</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="odds-btn flex-1 py-2 rounded" data-match="${idx}" data-outcome="home">🏠 ${match.oddsHome}</button>
+                        <button class="odds-btn flex-1 py-2 rounded" data-match="${idx}" data-outcome="draw">🤝 ${match.oddsDraw}</button>
+                        <button class="odds-btn flex-1 py-2 rounded" data-match="${idx}" data-outcome="away">✈️ ${match.oddsAway}</button>
+                    </div>
+                    ${match.status === "settled" ? `<p class="text-yellow-400 text-sm mt-2">Result: ${match.result === 0 ? match.home : (match.result === 1 ? "Draw" : match.away)}</p>` : '<input type="number" id="bet-amount-'+idx+'" placeholder="Amount (ECE)" class="bg-black/50 p-1 rounded w-full mt-2 text-sm">'}
+                `;
+                container.appendChild(card);
+                if(match.status !== "settled") {
+                    const homeBtn = card.querySelector(`button[data-outcome="home"]`);
+                    const drawBtn = card.querySelector(`button[data-outcome="draw"]`);
+                    const awayBtn = card.querySelector(`button[data-outcome="away"]`);
+                    const amountInput = document.getElementById(`bet-amount-${idx}`);
+                    homeBtn.onclick = () => { const amt = amountInput.value; if(amt) placeBet(idx, "home", parseFloat(amt)); else alert("Enter amount"); };
+                    drawBtn.onclick = () => { const amt = amountInput.value; if(amt) placeBet(idx, "draw", parseFloat(amt)); else alert("Enter amount"); };
+                    awayBtn.onclick = () => { const amt = amountInput.value; if(amt) placeBet(idx, "away", parseFloat(amt)); else alert("Enter amount"); };
+                }
+            });
+        }
+        
+        function renderMyBets() {
+            const container = document.getElementById("my-bets");
+            if(!userAddress) { container.innerHTML = '<p class="text-gray-400">Connect wallet to see your bets.</p>'; return; }
+            const userBets = bets.filter(b => b.user.toLowerCase() === userAddress.toLowerCase());
+            if(userBets.length === 0) { container.innerHTML = '<p class="text-gray-400">No bets placed yet.</p>'; return; }
+            let html = '<div class="space-y-2">';
+            userBets.forEach(b => {
+                html += `<div class="bg-black/30 p-2 rounded flex justify-between text-xs">
+                    <span>${b.matchName}</span>
+                    <span>${b.outcome} @${b.odds}</span>
+                    <span>${b.amount} ECE</span>
+                    <span class="${b.status === 'won' ? 'text-green-400' : (b.status === 'lost' ? 'text-red-400' : 'text-yellow-400')}">${b.status}</span>
+                </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Admin: settle match
+        document.getElementById("settle-match-btn").onclick = async () => {
+            if(userAddress.toLowerCase() !== ADMIN_ADDRESS.toLowerCase()) { alert("Not admin"); return; }
+            const matchIdx = parseInt(document.getElementById("settle-match-select").value);
+            const winningOutcome = parseInt(document.getElementById("winning-outcome").value);
+            if(isNaN(matchIdx) || isNaN(winningOutcome) || winningOutcome <0 || winningOutcome >2) { alert("Invalid selection"); return; }
+            const match = matches[matchIdx];
+            if(match.status !== "open") { alert("Match already settled"); return; }
+            match.status = "settled";
+            match.result = winningOutcome;
+            saveMatches();
+            // Process winners: find bets on this match with matching outcome
+            const winningBets = bets.filter(b => b.matchId === matchIdx && 
+                ((winningOutcome === 0 && b.outcome === "home") ||
+                 (winningOutcome === 1 && b.outcome === "draw") ||
+                 (winningOutcome === 2 && b.outcome === "away")));
+            let totalPayout = 0;
+            for(let bet of winningBets) {
+                const winAmount = parseFloat(bet.amount) * parseFloat(bet.odds);
+                bet.status = "won";
+                totalPayout += winAmount;
+                // Actually send tokens to user (requires admin to have ECE balance)
+                // We'll simulate: alert to send manually, but we can also try to transfer from admin wallet
+                if(signer) {
+                    try {
+                        const tokenWithSigner = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+                        const winWei = ethers.utils.parseUnits(winAmount.toFixed(18), 18);
+                        await tokenWithSigner.transfer(bet.user, winWei);
+                    } catch(e) { console.error("Transfer failed: ", e); }
+                }
+            }
+            const losingBets = bets.filter(b => b.matchId === matchIdx && !winningBets.includes(b));
+            losingBets.forEach(b => b.status = "lost");
+            saveBets();
+            alert(`Match settled. Paid ${totalPayout.toFixed(2)} ECE to winners.`);
+            renderMatches();
+            renderMyBets();
+            populateSettleSelect();
+        };
+        
+        // Admin: add new match
+        document.getElementById("add-match-btn").onclick = () => {
+            if(userAddress.toLowerCase() !== ADMIN_ADDRESS.toLowerCase()) { alert("Not admin"); return; }
+            const home = document.getElementById("new-home").value;
+            const away = document.getElementById("new-away").value;
+            const oddsHome = parseFloat(document.getElementById("new-odds-home").value);
+            const oddsDraw = parseFloat(document.getElementById("new-odds-draw").value);
+            const oddsAway = parseFloat(document.getElementById("new-odds-away").value);
+            if(!home || !away || isNaN(oddsHome) || isNaN(oddsDraw) || isNaN(oddsAway)) { alert("Fill all fields"); return; }
+            const newId = matches.length;
+            matches.push({
+                id: newId,
+                home: home,
+                away: away,
+                oddsHome: oddsHome,
+                oddsDraw: oddsDraw,
+                oddsAway: oddsAway,
+                status: "open",
+                result: null
+            });
+            saveMatches();
+            renderMatches();
+            populateSettleSelect();
+            document.getElementById("new-home").value = "";
+            document.getElementById("new-away").value = "";
+            document.getElementById("new-odds-home").value = "";
+            document.getElementById("new-odds-draw").value = "";
+            document.getElementById("new-odds-away").value = "";
+            alert("Match added!");
+        };
+        
+        function setLoading(show, text) {
+            document.getElementById("loading-text").innerText = text;
+            document.getElementById("loading-overlay").classList.toggle("hidden", !show);
+        }
+        
+        // Google Translate
+        window.googleTranslateElementInit = () => { new google.translate.TranslateElement({ pageLanguage: 'en' }, 'google_translate_element'); };
+        
+        // Initial render
+        renderMatches();
+    </script>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>

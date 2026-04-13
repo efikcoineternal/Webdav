@@ -1,0 +1,67 @@
+{
+  "name": "EfikCoin Eternal",
+  "symbol": "ECE",
+  "address": "0x9F8C29E496ECB6C39c221458f211234DfCB233E0",
+  "chainId": 56,
+  "decimals": 18,
+  "totalSupply": "1000000000",
+  "logoURI": "https://raw.githubusercontent.com/Efikcoinofficialecosystem/efikcoin-eternal/main/1772019882787.png",
+  "description": "EfikCoin Eternal (ECE) is a decentralized financial ecosystem built on Binance Smart Chain (BSC) to empower individuals globally. It features staking with up to 750% APR, airdrop tools, loan system, and a fully transparent, non‑upgradeable smart contract. Created by a single founder after years of dedication, ECE embodies true decentralization and long‑term community value.",
+  "website": "https://efikcoin-eternal-blockchain.github.io/ECE-Wallet/",
+  "explorer": "https://bscscan.com/address/0x9F8C29E496ECB6C39c221458f211234DfCB233E0",
+  "tags": ["defi", "staking", "governance", "gamefi", "bsc", "community"],
+  "extensions": {
+    "assetType": "TOKEN",
+    "isNonCustodial": true,
+    "isUpgradeable": false,
+    "hasMint": true,
+    "hasBurn": true,
+    "hasStaking": true,
+    "hasAirdrop": true,
+    "hasLoan": true
+  },
+  "staking": {
+    "aprs": {
+      "30": "125%",
+      "60": "180%",
+      "90": "250%",
+      "180": "400%",
+      "365": "750%"
+    },
+    "lockPeriods": [30, 60, 90, 180, 365],
+    "rewardToken": "ECE"
+  },
+  "links": {
+    "website": "https://efikcoin-eternal-blockchain.github.io/ECE-Wallet/",
+    "github": "https://github.com/Efikcoinofficialecosystem/Efikcoin-Eternal",
+    "discord": "https://discord.gg/Ub4vvudcV",
+    "telegram": "https://t.me/efikcoinofficialecosystem",
+    "twitter": "https://twitter.com/efikcoin",
+    "email": "efikcoinofficialecosystem@gmail.com",
+    "docs": "https://efikcoinofficialecosystem.github.io/Efikcoin-Eternal/"
+  },
+  "listings": {
+    "coingecko": "",
+    "coinmarketcap": "",
+    "dexscreener": "https://dexscreener.com/bsc/0x9f8c29e496ecb6c39c221458f211234dfcb233e0",
+    "poocoin": "https://poocoin.app/tokens/0x9f8c29e496ecb6c39c221458f211234dfcb233e0",
+    "pancakeswap": "https://pancakeswap.finance/swap?outputCurrency=0x9F8C29E496ECB6C39c221458f211234DfCB233E0"
+  },
+  "roadmap": {
+    "phase1": "Completed – Contract deployment, website, staking, airdrop",
+    "phase2": "In Progress – CoinGecko/CMC listings, community growth",
+    "phase3": "Planned – DAO governance, cross‑chain bridge, mobile app",
+    "phase4": "Legacy – Decentralized exchange, humanitarian grants"
+  },
+  "founder": {
+    "message": "Coin is life. Life is for everyone. I built this with my own hands, my own blood, and my own spirit. No shortcuts, no scams – only a legacy for generations.",
+    "wallet": "0xc5ad5cfcf81ad63a94227334b898eafce6b27cca"
+  },
+  "security": {
+    "contractVerified": true,
+    "liquidityLocked": true,
+    "audit": "Pending – planned for Q2 2026",
+    "nonUpgradeable": true,
+    "ownerControlled": true
+  }
+}

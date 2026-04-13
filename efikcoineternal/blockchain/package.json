@@ -1,0 +1,29 @@
+{
+  "name": "@efikcoineternal/blockchain",
+  "version": "1.0.0",
+  "description": "Metadata and assets for EfikCoin Eternal (ECE) token – includes token list, manifest, and other blockchain resources.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "validate": "node scripts/validate-json.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/efikcoineternal/blockchain.git"
+  },
+  "keywords": [
+    "efikcoin",
+    "ece",
+    "token",
+    "blockchain",
+    "bsc",
+    "defi",
+    "tokenlist"
+  ],
+  "author": "EfikCoin Eternal",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/efikcoineternal/blockchain/issues"
+  },
+  "homepage": "https://github.com/efikcoineternal/blockchain#readme"
+}

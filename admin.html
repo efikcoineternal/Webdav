@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EfikCoin Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(20,20,20,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,215,0,0.2); border-radius: 1.5rem; }
+        .btn { transition: all 0.2s; cursor: pointer; font-weight: 600; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(255,215,0,0.3); }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #f59e0b; }
+        .login-container { max-width: 400px; margin: 10vh auto; }
+        .chat-message { padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.5rem; }
+        .chat-user { background: #1e293b; }
+        .chat-admin { background: #2d3748; border-left: 3px solid #f59e0b; }
+    </style>
+</head>
+<body class="p-4">
+    <div id="loginScreen" class="login-container">
+        <div class="glass-card p-8 text-center">
+            <img src="https://raw.githubusercontent.com/Efikcoinofficialecosystem/efikcoin-eternal/main/1772019882787.png" alt="ECE Logo" class="w-20 h-20 mx-auto rounded-full mb-4">
+            <h1 class="text-2xl font-bold text-amber-400">Admin Access</h1>
+            <p class="text-gray-400 mb-6">Enter password to continue</p>
+            <input type="password" id="adminPassword" placeholder="Password" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white mb-4">
+            <button id="loginBtn" class="btn bg-amber-500 hover:bg-amber-600 text-black px-6 py-2 rounded-lg w-full">Unlock</button>
+            <div id="loginError" class="text-red-400 text-sm mt-3"></div>
+        </div>
+    </div>
+
+    <div id="adminDashboard" class="hidden max-w-6xl mx-auto space-y-6">
+        <div class="text-center">
+            <img src="https://raw.githubusercontent.com/Efikcoinofficialecosystem/efikcoin-eternal/main/1772019882787.png" alt="ECE Logo" class="w-16 h-16 mx-auto rounded-full">
+            <h1 class="text-3xl font-bold text-amber-400">EfikCoin Eternal – Admin Panel</h1>
+            <p class="text-gray-400">Only you have access. Monitor your ecosystem.</p>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-4">
+            <div class="glass-card p-4 text-center"><p class="text-gray-400 text-sm">Total ECE Holders</p><p id="totalHolders" class="stat-number">--</p></div>
+            <div class="glass-card p-4 text-center"><p class="text-gray-400 text-sm">Registered Users (Unique Wallets)</p><p id="registeredUsers" class="stat-number">--</p></div>
+            <div class="glass-card p-4 text-center"><p class="text-gray-400 text-sm">Total Supply</p><p id="totalSupply" class="stat-number">--</p></div>
+            <div class="glass-card p-4 text-center"><p class="text-gray-400 text-sm">ECE Price (USD)</p><p id="ecePrice" class="stat-number">--</p></div>
+        </div>
+
+        <div class="glass-card p-5">
+            <h2 class="text-xl font-bold text-amber-400 mb-4">💬 User Messages (Support Chat)</h2>
+            <div id="chatList" class="space-y-4 max-h-96 overflow-y-auto mb-4"></div>
+            <div id="replySection" class="hidden mt-4 border-t border-gray-700 pt-4">
+                <p class="text-sm text-gray-400 mb-2">Replying to: <span id="replyToWallet" class="font-mono text-amber-300"></span></p>
+                <textarea id="replyMessage" rows="2" placeholder="Type your reply..." class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"></textarea>
+                <button id="sendReplyBtn" class="btn bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-lg mt-2">Send Reply</button>
+                <button id="cancelReplyBtn" class="btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg mt-2 ml-2">Cancel</button>
+            </div>
+        </div>
+
+        <div class="glass-card p-5">
+            <h2 class="text-xl font-bold text-amber-400 mb-4">📋 Recent User Activity</h2>
+            <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-gray-400 border-b border-gray-700"><tr><th class="text-left py-2">Wallet</th><th class="text-left">Action</th><th class="text-left">Details</th><th class="text-left">Time</th></tr></thead><tbody id="activityTable"></tbody></table></div>
+        </div>
+
+        <div class="glass-card p-5">
+            <h2 class="text-xl font-bold text-amber-400 mb-4">🏆 Top 20 ECE Holders</h2>
+            <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-gray-400 border-b border-gray-700"><tr><th class="text-left py-2">Rank</th><th class="text-left">Address</th><th class="text-right">Balance (ECE)</th><th class="text-right">Percentage</th></tr></thead><tbody id="holdersTable"></tbody></table></div>
+        </div>
+
+        <div class="glass-card p-5 text-center text-gray-400 text-sm">
+            <p>Owner Wallet: <span class="font-mono text-amber-300">0xc5ad5cfcf81ad63a94227334b898eafce6b27cca</span></p>
+            <p>Contract: <span class="font-mono">0x9F8C29E496ECB6C39c221458f211234DfCB233E0</span></p>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASSWORD = "YourStrongPassword2026!"; // CHANGE THIS
+        const CONTRACT_ADDRESS = "0x9F8C29E496ECB6C39c221458f211234DfCB233E0";
+        const BSC_API_KEY = "S843WQ988YXGJTEMWM83XCVR8FBF1PXYB6";
+        const SUPABASE_URL = "https://nydgqfyqtfsnlctjzuot.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55ZGdxZnlxdGZzbmxjdGp6dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDU1MDksImV4cCI6MjA5MDc4MTUwOX0.Qcf9nBJ6LRQb9RBpIVXq-1S8n6mh0Jgv8_Ev8oMq8rY";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const loginScreen = document.getElementById('loginScreen');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const loginBtn = document.getElementById('loginBtn');
+        const adminPassword = document.getElementById('adminPassword');
+        const loginError = document.getElementById('loginError');
+
+        loginBtn.addEventListener('click', () => {
+            if (adminPassword.value === ADMIN_PASSWORD) {
+                loginScreen.classList.add('hidden');
+                adminDashboard.classList.remove('hidden');
+                loadAllData();
+                loadChatMessages();
+                subscribeToChat();
+            } else {
+                loginError.innerText = 'Incorrect password';
+            }
+        });
+
+        async function loadAllData() { await Promise.all([fetchHolderCount(), fetchRegisteredUsers(), fetchTotalSupply(), fetchPrice(), fetchRecentActivity(), fetchTopHolders()]); }
+        async function fetchHolderCount() { /* use BscScan API */ }
+        async function fetchRegisteredUsers() { const { data } = await supabase.from('user_actions').select('wallet_address'); const unique = new Set(data.map(r => r.wallet_address)); document.getElementById('registeredUsers').innerText = unique.size; }
+        async function fetchTotalSupply() { /* similar */ }
+        async function fetchPrice() { /* DexScreener */ }
+        async function fetchRecentActivity() { /* from supabase */ }
+        async function fetchTopHolders() { /* BscScan */ }
+
+        let currentChatUser = null;
+        async function loadChatMessages() {
+            const { data, error } = await supabase.from('chat_messages').select('*').order('created_at', { ascending: true });
+            if (error) return;
+            const grouped = {};
+            data.forEach(msg => { if (!grouped[msg.user_wallet]) grouped[msg.user_wallet] = []; grouped[msg.user_wallet].push(msg); });
+            const container = document.getElementById('chatList');
+            container.innerHTML = '';
+            for (const [wallet, msgs] of Object.entries(grouped)) {
+                const card = document.createElement('div');
+                card.className = 'glass-card p-3 cursor-pointer hover:border-amber-500 transition';
+                card.innerHTML = `<p class="font-mono text-sm text-amber-300">${wallet}</p><p class="text-xs text-gray-400">Last: ${msgs[msgs.length-1].message.slice(0,50)}</p>`;
+                card.onclick = () => showChatThread(wallet, msgs);
+                container.appendChild(card);
+            }
+        }
+        function showChatThread(wallet, messages) {
+            currentChatUser = wallet;
+            document.getElementById('replyToWallet').innerText = wallet;
+            document.getElementById('replySection').classList.remove('hidden');
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50';
+            modal.innerHTML = `<div class="bg-gray-900 rounded-xl p-5 max-w-2xl w-full max-h-80vh overflow-auto"><h3 class="text-xl font-bold text-amber-400 mb-3">Chat with ${wallet.slice(0,6)}...${wallet.slice(-4)}</h3><div id="threadMessages" class="space-y-2 max-h-96 overflow-y-auto mb-4"></div><div class="flex gap-2"><input type="text" id="threadReplyInput" placeholder="Type reply..." class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"><button id="threadSendBtn" class="btn bg-amber-500 hover:bg-amber-600 text-black px-4 py-2 rounded-lg">Send</button></div><button id="closeModalBtn" class="btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg mt-3 w-full">Close</button></div>`;
+            document.body.appendChild(modal);
+            const messagesDiv = modal.querySelector('#threadMessages');
+            messages.forEach(msg => { const div = document.createElement('div'); div.className = `chat-message ${msg.is_admin ? 'chat-admin' : 'chat-user'}`; div.innerHTML = `<p><span class="font-bold ${msg.is_admin ? 'text-amber-400' : 'text-blue-400'}">${msg.is_admin ? 'Admin' : 'User'}:</span> ${msg.message}</p><p class="text-xs text-gray-500">${new Date(msg.created_at).toLocaleString()}</p>`; messagesDiv.appendChild(div); });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            const replyInput = modal.querySelector('#threadReplyInput');
+            modal.querySelector('#threadSendBtn').onclick = async () => {
+                const reply = replyInput.value.trim();
+                if (!reply) return;
+                await supabase.from('chat_messages').insert([{ user_wallet: wallet, message: reply, is_admin: true }]);
+                replyInput.value = '';
+                const { data: newMsgs } = await supabase.from('chat_messages').select('*').eq('user_wallet', wallet).order('created_at', { ascending: true });
+                messagesDiv.innerHTML = '';
+                newMsgs.forEach(msg => { const div = document.createElement('div'); div.className = `chat-message ${msg.is_admin ? 'chat-admin' : 'chat-user'}`; div.innerHTML = `<p><span class="font-bold ${msg.is_admin ? 'text-amber-400' : 'text-blue-400'}">${msg.is_admin ? 'Admin' : 'User'}:</span> ${msg.message}</p><p class="text-xs text-gray-500">${new Date(msg.created_at).toLocaleString()}</p>`; messagesDiv.appendChild(div); });
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            };
+            modal.querySelector('#closeModalBtn').onclick = () => modal.remove();
+        }
+        function subscribeToChat() { supabase.channel('admin-chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => loadChatMessages()).subscribe(); }
+        document.getElementById('cancelReplyBtn').addEventListener('click', () => document.getElementById('replySection').classList.add('hidden'));
+    </script>
+</body>
+</html>

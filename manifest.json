@@ -1,0 +1,21 @@
+{
+  "name": "EfikCoin Eternal Wallet",
+  "short_name": "ECE Wallet",
+  "description": "Secure non‑custodial wallet for ECE token – stake, airdrop, loans, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/Efikcoinofficialecosystem/efikcoin-eternal/main/1772019882787.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "/",
+  "lang": "en",
+  "orientation": "portrait",
+  "categories": ["finance", "cryptocurrency", "defi"]
+}

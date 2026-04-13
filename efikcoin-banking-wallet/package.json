@@ -1,0 +1,9 @@
+efikcoin-banking-wallet/
+├── package.json          (the root one above)
+├── frontend/
+│   ├── package.json      (frontend one)
+│   └── src/
+├── backend/
+│   ├── package.json      (backend one)
+│   ├── .env
+│   └── src/

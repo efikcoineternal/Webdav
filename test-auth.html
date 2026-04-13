@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>Supabase Auth Test</title></head>
+<body>
+    <input id="email" placeholder="Email"><br>
+    <input id="pwd" type="password" placeholder="Password"><br>
+    <button id="signup">Sign Up</button>
+    <button id="signin">Sign In</button>
+    <pre id="output"></pre>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        const supabase = createClient(
+            'https://nydgqfyqtfsnlctjzuot.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55ZGdxZnlxdGZzbmxjdGp6dW90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDU1MDksImV4cCI6MjA5MDc4MTUwOX0.Qcf9nBJ6LRQb9RBpIVXq-1S8n6mh0Jgv8_Ev8oMq8rY'
+        );
+        const out = document.getElementById('output');
+        document.getElementById('signup').onclick = async () => {
+            const { data, error } = await supabase.auth.signUp({
+                email: document.getElementById('email').value,
+                password: document.getElementById('pwd').value
+            });
+            out.innerText = JSON.stringify({ data, error }, null, 2);
+        };
+        document.getElementById('signin').onclick = async () => {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: document.getElementById('email').value,
+                password: document.getElementById('pwd').value
+            });
+            out.innerText = JSON.stringify({ data, error }, null, 2);
+        };
+    </script>
+</body>
+</html>
